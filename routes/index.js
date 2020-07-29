@@ -10,26 +10,37 @@ router.get('/', (req, res, next) => {
   res.json({'welcome': 'Hello World'});
 });
 
+/* GET login endpoint.
+  Takes in two parameters:
+    1. username: user's username used to login
+    2. password: user's passowrd used to login
+  
+  Returns a JWT token if the user was able to login successfully.
+  Returns "Not authorized" error if the user failed to login.
+*/
 router.get('/login/:username/:password', (req, res, next) => {
+  // create SQL statement
   const userSql = 'select * from user where username = ?'
+
+  // get user from the db using username parameter
   db.get(userSql, req.params.username, (err, row) => {
+    // if there was an error, send the error message 
     if (err) {
-      res.status(400).json({"error":err.message});
+      res.status(400).json({ "error": err.message });
       return;
     }
-    if (row) {
-      if (row.password === req.params.password) {
-        const token = jwt.sign(row.id, 'my_secret_key');
-        res.json({token: token});
-        return;
-      }
-      else {
-        res.status(400).json({"error": 'Not authorized'});
-        return;
-      }
+
+    // if the user was found and the password is correct
+    // return the token
+    if (row && row.password === req.params.password) {
+      const token = jwt.sign(row.id, 'my_secret_key');
+      res.json({ token });
+      return;
     }
+
+    // else the user was not found or the password was incorrect
     else {
-      res.status(400).json({"error": 'Not authorized'});
+      res.status(401).json({"error": 'Not authorized'});
       return;
     }
   })
