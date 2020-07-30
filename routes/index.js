@@ -34,8 +34,8 @@ router.get('/login/:username/:password', (req, res, next) => {
     // return the token
     if (row && row.password === req.params.password) {
       const token = jwt.sign({ userid: row.id },
-        process.env.JWTSecretKey,
-        { expiresIn: process.env.tokenExpiresIn });
+        process.env.JWT_SECRET_KEY,
+        { expiresIn: process.env.TOKEN_EXPIRES_IN });
       res.json({ token });
       return;
     }

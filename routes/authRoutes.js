@@ -1,16 +1,30 @@
 const path = require('path');
+const os = require('os');
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const formidable = require('formidable');
+const Multer = require('multer');
 const request = require('request');
 const { getLinkPreview } = require('link-preview-js');
+
 const {Translate} = require('@google-cloud/translate').v2;
+const {Storage} = require('@google-cloud/storage');
 
 const db = require('../config/database');
 const { json } = require('express');
 
 const router = express.Router();
+
+const storage = new Storage();
 const translate = new Translate();
+
+// Multer is required to process file uploads and make them available via
+// req.files.
+const multer = Multer({
+  storage: Multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // no larger than 5mb, you can change as needed.
+  },
+});
 
 /* Authentication middleware.
   Used to get JWT token from the headers and validate it.
@@ -27,7 +41,7 @@ function authmd (req, res, next) {
     const bearerToken = bearer[1];
 
     // verify the token
-    jwt.verify(bearerToken, process.env.JWTSecretKey, function(err, decoded) {
+    jwt.verify(bearerToken, process.env.JWT_SECRET_KEY, function(err, decoded) {
       // catch errors
       if (err) {
         res.json({err});
@@ -78,38 +92,53 @@ router.get('/parse/:url', async (req, res, next) => {
 });
 
 /* Endpoint to upload a file.
-  Uploads all files in a form to the uploads folder
+  Uploads a file in a form to the google cloud bucket
 */
-router.post('/upload', (req, res, next) => {
-  // configure formidable to upload files
-  const form = formidable({ 
-    multiples: true,
-    uploadDir: __dirname + '/../uploads',
-    keepExtensions: true
+router.post('/upload', multer.single('file'), (req, res, next) => {
+  // A bucket is a container for objects (files).
+  const bucket = storage.bucket(process.env.GCLOUD_STORAGE_BUCKET);
+
+  if (!req.file) {
+    res.status(400).json({error: 'No file uploaded.'});
+    return;
+  }
+
+  // Create a new blob in the bucket and upload the file data.
+  const blob = bucket.file(req.file.originalname);
+  const blobStream = blob.createWriteStream();
+
+  blobStream.on('error', (err) => {
+    console.log(err);
+    res.json(err);
   });
 
-  // parse the form
-  form.parse(req, (err, files) => {
-    // catch errors if any
-    if (err) {
-      res.json({ err });
-      return;
-    }
-
-    // get the file's identifier and return it
-    // so it can be used to download the file
-    identifier = path.basename(files.file.path);
-    res.json({ identifier });
+  blobStream.on('finish', () => {
+    res.status(200).json({ identifier: blob.name });
   });
+
+  blobStream.end(req.file.buffer);
 });
 
 /* Endpoint to download a file.
   Takes in file's identifier parameter and
   downloads the file
 */
-router.get('/download/:identifier', function(req, res){
-  const file = `${__dirname}/../uploads/${req.params.identifier}`;
-  res.download(file);
+router.get('/download/:identifier', async (req, res) => {
+  const bucketName = process.env.GCLOUD_STORAGE_BUCKET;
+  const srcFilename = req.params.identifier;
+  const destFilename = path.join(os.homedir(), srcFilename);
+
+  const options = {
+    // The path to which the file should be downloaded, e.g. "./file.txt"
+    destination: destFilename,
+  };
+
+  // Downloads the file
+  await storage.bucket(bucketName).file(srcFilename).download(options);
+
+  res.json({
+    msg: `${srcFilename} downloaded to ${destFilename}.`
+  });
 });
 
 /* Endpoint that takes in encoded url and sends translated HTML
