@@ -33,7 +33,9 @@ router.get('/login/:username/:password', (req, res, next) => {
     // if the user was found and the password is correct
     // return the token
     if (row && row.password === req.params.password) {
-      const token = jwt.sign(row.id, 'my_secret_key');
+      const token = jwt.sign({ userid: row.id },
+        process.env.JWTSecretKey,
+        { expiresIn: process.env.tokenExpiresIn });
       res.json({ token });
       return;
     }

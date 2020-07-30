@@ -27,7 +27,7 @@ function authmd (req, res, next) {
     const bearerToken = bearer[1];
 
     // verify the token
-    jwt.verify(bearerToken, 'my_secret_key', function(err, decoded) {
+    jwt.verify(bearerToken, process.env.JWTSecretKey, function(err, decoded) {
       // catch errors
       if (err) {
         res.json({err});
@@ -39,7 +39,7 @@ function authmd (req, res, next) {
       // after the middleware
       else {
         const userSql = 'select * from user where id = ?'
-        db.get(userSql, decoded, (err, row) => {
+        db.get(userSql, decoded.userid, (err, row) => {
           req.user = row.username
           next();
         });
