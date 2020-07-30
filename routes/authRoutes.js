@@ -138,7 +138,7 @@ router.get('/download/:identifier', async (req, res) => {
   await storage.bucket(bucketName).file(srcFilename).download(options);
 
   // Send the file over to the client
-  res.download(destFilename);
+  await res.download(destFilename);
 
   // Delete the file downloaded to the server
   fs.unlink(destFilename, function (err) {
