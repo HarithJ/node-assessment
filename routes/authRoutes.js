@@ -138,23 +138,23 @@ router.get('/download/:identifier', async (req, res) => {
   await storage.bucket(bucketName).file(srcFilename).download(options);
 
   // Send the file over to the client
-  await res.download(destFilename);
-
-  // Delete the file downloaded to the server
-  fs.unlink(destFilename, function (err) {
-    // catch error and log it to console for debugging purposes
+  res.download(destFilename, function (err) {
     if (err) {
-      console.error(err);
+      console.log(err);
     }
+    else {
+      // Delete the file downloaded to the server to cleanup
+      fs.unlink(destFilename, function (err) {
+        // catch error and log it to console for debugging purposes
+        if (err) {
+          console.error(err);
+        }
 
-    // if no error, file has been deleted successfully
-    console.log('File deleted!');
-  });
-
-  // Write a response to user
-  res.json({
-    msg: "File downloaded successfully"
-  });
+        // if no error, file has been deleted successfully
+        console.log('File deleted!');
+      });
+    }
+  })  
 });
 
 /* Endpoint that takes in encoded url and sends translated HTML
