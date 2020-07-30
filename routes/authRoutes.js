@@ -1,5 +1,6 @@
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const Multer = require('multer');
@@ -143,7 +144,7 @@ router.get('/download/:identifier', async (req, res) => {
   fs.unlink(destFilename, function (err) {
     // catch error and log it to console for debugging purposes
     if (err) {
-      console.error('Error occured while attempting to delete file');
+      console.error(err);
     }
 
     // if no error, file has been deleted successfully
