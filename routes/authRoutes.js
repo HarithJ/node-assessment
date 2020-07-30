@@ -129,7 +129,7 @@ router.get('/download/:identifier', async (req, res) => {
   const destFilename = path.join(os.homedir(), srcFilename);
 
   const options = {
-    // The path to which the file should be downloaded, e.g. "./file.txt"
+    // The path to which the file should be downloaded
     destination: destFilename,
   };
 
